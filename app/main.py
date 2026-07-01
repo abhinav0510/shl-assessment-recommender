@@ -11,6 +11,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
 
 from app.agent import process_chat
 from app.catalog import catalog_search
@@ -61,11 +64,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve UI
+static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+@app.get("/")
+async def root():
+    return FileResponse(str(static_dir / "index.html"))
+
 
 @app.get("/health")
 async def health():
     """Readiness check endpoint."""
     return {"status": "ok"}
+
+
+@app.get("/catalog")
+async def get_catalog():
+    """Return all assessments in the catalog for the frontend catalog browser."""
+    return [a.to_display_dict() for a in catalog_search.assessments]
 
 
 @app.post("/chat", response_model=ChatResponse)
